@@ -1,0 +1,19 @@
+.gitignore
+  s_d057aca79f77d8::t_c575cc52dbc273 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "8cd6f1388178f71817c0cb49f125db10f70788a2",
+  "prompts": {},
+  "sessions": {
+    "s_d057aca79f77d8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "6b3cf9d0-e735-4b97-9723-3a0a0134f3c3",
+        "model": "claude-opus-4-7-thinking-xhigh"
+      },
+      "human_author": "Santhoshkumar Palanisamy2 <spalanisamy2@lenovo.com>"
+    }
+  }
+}
