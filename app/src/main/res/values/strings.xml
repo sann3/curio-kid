@@ -1,0 +1,53 @@
+<resources>
+    <string name="app_name">Curio Kid</string>
+    <string name="app_tagline">Ask Luna anything!</string>
+
+    <string name="nav_chat">Ask Luna</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+    <string name="nav_parent">Parent Dashboard</string>
+
+    <string name="hint_question">Type your question…</string>
+    <string name="action_send">Send</string>
+    <string name="action_attach_image">Attach image</string>
+    <string name="action_take_photo">Take photo</string>
+    <string name="action_record_audio">Record audio</string>
+    <string name="action_stop_recording">Stop recording</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_copy_qa">Copy</string>
+    <string name="action_copy_question">Copy question</string>
+    <string name="action_copy_answer">Copy answer</string>
+    <string name="action_copy_both">Copy question &amp; answer</string>
+    <string name="copy_label_qa">Curio Kid Q&amp;A</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+
+    <string name="settings_api_key">Google AI Studio API key</string>
+    <string name="settings_api_key_hint">Paste your API key (used for Gemma 4)</string>
+    <string name="settings_google_api_key">Google AI Studio API key</string>
+    <string name="settings_openrouter_api_key">OpenRouter API key</string>
+    <string name="settings_save">Save</string>
+    <string name="settings_clear">Clear</string>
+    <string name="settings_pin">Parent PIN (4 digits)</string>
+    <string name="settings_model">Model</string>
+    <string name="settings_provider">AI provider</string>
+    <string name="settings_local_model_title">On-device Gemma 4</string>
+    <string name="settings_developer">Developer mode</string>
+    <string name="settings_developer_toggle">Show detailed errors and logs</string>
+    <string name="settings_debug_log">Debug log</string>
+    <string name="settings_copy_log">Copy log</string>
+    <string name="debug_log_empty">Log is empty.</string>
+    <string name="debug_log_empty_hint">No log entries yet. Try sending a message — anything that fails will appear here.</string>
+
+    <string name="parent_unlock">Enter parent PIN</string>
+    <string name="parent_unlock_action">Unlock</string>
+    <string name="parent_set_pin">Set a 4-digit PIN to protect this dashboard</string>
+
+    <string name="curiosity_digest">Curiosity Digest</string>
+    <string name="generate_digest">Generate today\'s digest</string>
+
+    <string name="error_no_api_key">Add an API key in Settings to start chatting with Luna.</string>
+    <string name="error_generic">Something went wrong. Please try again.</string>
+
+    <string name="welcome_title">Hi! I\'m Luna ✨</string>
+    <string name="welcome_body">Ask me anything you\'re curious about — about animals, space, why the sky is blue, or how planes fly!</string>
+</resources>

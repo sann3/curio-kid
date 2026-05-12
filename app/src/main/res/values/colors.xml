@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="luna_primary">#7C5CFF</color>
+    <color name="luna_secondary">#FF7AB6</color>
+    <color name="luna_accent">#FFD166</color>
+    <color name="luna_bg_light">#FFF7F2</color>
+</resources>

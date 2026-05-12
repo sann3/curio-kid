@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Crescent moon (Luna) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M62,30
+                          A 26 26 0 1 0 62 78
+                          A 20 20 0 1 1 62 30 Z" />
+    <!-- Sparkle -->
+    <path
+        android:fillColor="#FFD166"
+        android:pathData="M30,40 L33,46 L39,49 L33,52 L30,58 L27,52 L21,49 L27,46 Z" />
+    <path
+        android:fillColor="#FF7AB6"
+        android:pathData="M78,68 L80,72 L84,74 L80,76 L78,80 L76,76 L72,74 L76,72 Z" />
+</vector>
