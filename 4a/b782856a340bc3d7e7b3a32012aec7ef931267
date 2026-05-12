@@ -1,0 +1,38 @@
+app/src/main/java/com/curiokid/app/ai/provider/LocalGemmaBackend.kt
+  s_b6b381c1e08e3b::t_dcdfea987cdcbc 19
+app/src/main/java/com/curiokid/app/ui/chat/ChatViewModel.kt
+  s_b6b381c1e08e3b::t_b32730f5da4a50 151-180
+  s_b6b381c1e08e3b::t_d36eb24156ac14 92-97,121,128
+  s_b6b381c1e08e3b::t_cca49c7f27bdde 9
+app/src/main/java/com/curiokid/app/ai/LunaAI.kt
+  s_b6b381c1e08e3b::t_366203776ab7db 5
+  s_b6b381c1e08e3b::t_3d5c6e0e885c02 63-79
+  s_b6b381c1e08e3b::t_43ac1b496fb88e 154-164,167-168
+  s_b6b381c1e08e3b::t_689bf1d6022a15 33,37
+app/src/main/java/com/curiokid/app/ai/provider/LlmBackend.kt
+  s_b6b381c1e08e3b::t_0d9f62912badda 46
+  s_b6b381c1e08e3b::t_25ddce994bcb09 15-23,26,39-45,47-50
+app/src/main/java/com/curiokid/app/ai/provider/OpenRouterBackend.kt
+  s_b6b381c1e08e3b::t_92143c760ac2d5 30,39-45,48-52
+app/src/main/java/com/curiokid/app/ai/provider/GoogleAiStudioBackend.kt
+  s_b6b381c1e08e3b::t_5f07f20b809175 72-79,81,83
+  s_b6b381c1e08e3b::t_d15daacb6a9d88 36,62-71,80,82
+  s_b6b381c1e08e3b::t_6e57db6e5218aa 15-16
+  s_b6b381c1e08e3b::t_311678eb5769af 134-163
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.4",
+  "base_commit_sha": "4ab782856a340bc3d7e7b3a32012aec7ef931267",
+  "prompts": {},
+  "sessions": {
+    "s_b6b381c1e08e3b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "ba75d323-a488-4609-ad46-6963c83aa3b9",
+        "model": "claude-opus-4-7-thinking-xhigh"
+      },
+      "human_author": "Santhoshkumar. P <santhosh.mathsca@gmail.com>"
+    }
+  }
+}
