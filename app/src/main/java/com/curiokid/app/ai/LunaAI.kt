@@ -2,6 +2,7 @@ package com.curiokid.app.ai
 
 import android.graphics.Bitmap
 import android.util.Log
+import com.curiokid.app.ai.provider.ChatTurn
 import com.curiokid.app.ai.provider.GoogleAiStudioBackend
 import com.curiokid.app.ai.provider.LlmBackend
 import com.curiokid.app.ai.provider.LlmProvider
@@ -29,9 +30,11 @@ class LunaAI(
     suspend fun ask(
         question: String,
         image: Bitmap? = null,
+        history: List<ChatTurn> = emptyList(),
     ): Result<String> = runCatching {
         val raw = backend.ask(
             systemPrompt = SystemPrompt.LUNA,
+            history = history,
             userText = question,
             image = image,
             modelName = modelName,
@@ -57,7 +60,23 @@ class LunaAI(
          * not-yet-ready local backend.
          */
         fun friendlyError(throwable: Throwable, debug: Boolean = false): String {
-            val msg = (throwable.message ?: "").lowercase()
+            // The Google AI SDK wraps lower-level failures in
+            // `UnknownException("Something unexpected happened.")`, hiding
+            // the real diagnostic (e.g. SocketTimeoutException) one or two
+            // causes down. Walk the chain so our keyword matches see the
+            // actual failure, not just the wrapper.
+            val chainText = buildString {
+                var t: Throwable? = throwable
+                val seen = mutableSetOf<Throwable>()
+                while (t != null && seen.add(t)) {
+                    append(t::class.qualifiedName ?: t::class.simpleName ?: "?")
+                    append(": ")
+                    append(t.message ?: "")
+                    append('\n')
+                    t = t.cause
+                }
+            }
+            val msg = chainText.lowercase()
             val cls = throwable::class.qualifiedName ?: throwable::class.simpleName ?: "UnknownError"
 
             // Always surface the real exception in logcat AND in the in-app
@@ -132,10 +151,21 @@ class LunaAI(
                     msg.contains(" 429 ") ->
                     "Wow, so many questions today! Let's wait a minute and try again."
 
+                // Read/socket timeout: we DID reach the server, the
+                // model just took longer than the SDK's hard-coded 80s
+                // socket timeout to start replying. Misclassifying this
+                // as "no internet" sends parents on a wild goose chase.
+                msg.contains("sockettimeoutexception") ||
+                    msg.contains("socket timeout") ||
+                    msg.contains("read timed out") ||
+                    msg.contains("timed out") ||
+                    msg.contains("timeout") ->
+                    "That question got my brain thinking really hard — it took too long to answer. Try a shorter question, or ask me again in a moment! 🌙"
+
                 msg.contains("unable to resolve host") ||
                     msg.contains("failed to connect") ||
-                    msg.contains("timeout") ||
-                    msg.contains("timed out") ||
+                    msg.contains("no address associated") ||
+                    msg.contains("network is unreachable") ||
                     msg.contains("network") ->
                     "I can't get online right now. Check your internet and try again!"
 

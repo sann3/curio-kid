@@ -16,6 +16,7 @@ internal class LocalGemmaBackend : LlmBackend {
 
     override suspend fun ask(
         systemPrompt: String,
+        history: List<ChatTurn>,
         userText: String,
         image: Bitmap?,
         modelName: String,

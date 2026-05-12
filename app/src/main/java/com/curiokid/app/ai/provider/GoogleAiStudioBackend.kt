@@ -12,6 +12,8 @@ import com.google.ai.client.generativeai.type.TextPart
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.withContext
 
 /**
@@ -31,6 +33,7 @@ internal class GoogleAiStudioBackend(
 
     override suspend fun ask(
         systemPrompt: String,
+        history: List<ChatTurn>,
         userText: String,
         image: Bitmap?,
         modelName: String,
@@ -56,8 +59,28 @@ internal class GoogleAiStudioBackend(
             if (image != null) image(image)
             text(userText.ifBlank { "Tell me something cool!" })
         }
-        val response = model.generateContent(prompt)
-        response.bestText()
+        // Wire prior turns into Google's chat API. The Kotlin SDK requires
+        // role "user" / "model" and that history alternates (user first,
+        // model second, …); ChatViewModel guarantees that ordering.
+        val chatHistory = history.map { turn ->
+            val role = when (turn.role) {
+                ChatTurn.Role.USER -> "user"
+                ChatTurn.Role.ASSISTANT -> "model"
+            }
+            content(role = role) { text(turn.text) }
+        }
+        // Stream rather than one-shot. The SDK's HttpClient hard-codes
+        // socketTimeoutMillis = 80_000, with no override hook in
+        // RequestOptions, so a slow/large model that takes longer than
+        // 80s to begin emitting tokens fails with SocketTimeoutException.
+        // Streaming resets the read timer on every chunk, so as long as
+        // the model is producing tokens we never hit that cap.
+        val stream: Flow<GenerateContentResponse> = if (chatHistory.isEmpty()) {
+            model.generateContentStream(prompt)
+        } else {
+            model.startChat(history = chatHistory).sendMessageStream(prompt)
+        }
+        stream.collectAccumulatedText()
             ?: "Hmm, I'm not sure how to answer that one. Let's try a different question!"
     }
 
@@ -107,5 +130,35 @@ internal class GoogleAiStudioBackend(
             .filterIsInstance<TextPart>()
             .joinToString(separator = "") { it.text }
             .takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * Drain a streaming response into a single string, accumulating every
+     * `TextPart` from each chunk's first candidate. If the stream is
+     * interrupted by `ResponseStoppedException` (typically MAX_TOKENS),
+     * we keep whatever text already arrived so the child still gets a
+     * partial answer rather than an error bubble.
+     */
+    private suspend fun Flow<GenerateContentResponse>.collectAccumulatedText(): String? {
+        val sb = StringBuilder()
+        try {
+            collect { resp ->
+                val parts = resp.candidates.firstOrNull()?.content?.parts.orEmpty()
+                for (part in parts) {
+                    if (part is TextPart) sb.append(part.text)
+                }
+            }
+        } catch (stopped: ResponseStoppedException) {
+            DebugLog.w(
+                tag = "GoogleAI",
+                message = "Stream stopped early (${stopped.message ?: "unknown reason"}); using partial text.",
+                throwable = stopped,
+            )
+            // If we accumulated nothing before the stop, surface the
+            // exception so LunaAI.friendlyError can map it appropriately
+            // (max-tokens vs safety etc.).
+            if (sb.isBlank()) throw stopped
+        }
+        return sb.toString().takeIf { it.isNotBlank() }
     }
 }

@@ -27,6 +27,7 @@ internal class OpenRouterBackend(
 
     override suspend fun ask(
         systemPrompt: String,
+        history: List<ChatTurn>,
         userText: String,
         image: Bitmap?,
         modelName: String,
@@ -35,12 +36,20 @@ internal class OpenRouterBackend(
         val noteAboutImage = if (image != null) {
             "\n\n(Note: an image was attached; describe what a child might see in a friendly photo and answer the question generally.)"
         } else ""
+        val historyMessages = history.map { turn ->
+            val role = when (turn.role) {
+                ChatTurn.Role.USER -> "user"
+                ChatTurn.Role.ASSISTANT -> "assistant"
+            }
+            ChatMessageJson(role = role, content = turn.text)
+        }
         val response = chatCompletion(
             modelName = modelName,
-            messages = listOf(
-                ChatMessageJson(role = "system", content = systemPrompt),
-                ChatMessageJson(role = "user", content = text + noteAboutImage),
-            ),
+            messages = buildList {
+                add(ChatMessageJson(role = "system", content = systemPrompt))
+                addAll(historyMessages)
+                add(ChatMessageJson(role = "user", content = text + noteAboutImage))
+            },
             temperature = 0.7,
             maxTokens = 8192,
         )

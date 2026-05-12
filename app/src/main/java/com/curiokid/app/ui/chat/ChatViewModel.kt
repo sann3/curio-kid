@@ -6,6 +6,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.curiokid.app.CurioKidApplication
 import com.curiokid.app.ai.LunaAI
+import com.curiokid.app.ai.provider.ChatTurn
 import com.curiokid.app.ai.provider.LlmProvider
 import com.curiokid.app.data.debug.DebugLog
 import com.curiokid.app.data.local.QuestionEntity
@@ -88,6 +89,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
+        // Snapshot the conversation BEFORE adding the new user/placeholder
+        // turns so we can hand it to the backend as context. We cap it so a
+        // long session doesn't balloon the request size — Gemma chat
+        // contexts are bounded and we already pay for every prior token.
+        val history = _state.value.messages.toChatHistory(maxTurns = MAX_HISTORY_TURNS)
+
         val userMessage = ChatMessage(
             role = ChatMessage.Role.USER,
             text = text.ifBlank { "(picture)" },
@@ -111,14 +118,14 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             val modelName = settings.activeModel.value
             DebugLog.i(
                 "ChatVM",
-                "ask via ${provider.displayName} model=$modelName image=${image != null}"
+                "ask via ${provider.displayName} model=$modelName image=${image != null} historyTurns=${history.size}"
             )
             val ai = LunaAI(
                 provider = provider,
                 apiKey = key,
                 modelName = modelName,
             )
-            val result = ai.ask(text, image)
+            val result = ai.ask(text, image, history)
             val debug = settings.debugMode.value
             val answer = result.getOrElse { e -> LunaAI.friendlyError(e, debug = debug) }
             _state.update { current ->
@@ -141,4 +148,34 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
             )
         }
     }
+
+    companion object {
+        /**
+         * Roughly the last 8 user/Luna exchanges. Enough for natural
+         * follow-ups ("tell me more", "why?") without sending the whole
+         * day's chat back to the model on every turn.
+         */
+        private const val MAX_HISTORY_TURNS = 16
+    }
+}
+
+/**
+ * Convert the visible chat into the role-tagged list the LLM backends
+ * expect. Skips the in-flight "Thinking…" placeholder, blank messages,
+ * and trims to the most recent `maxTurns` so token usage stays bounded.
+ * Image-only past turns become a short text marker so the model still
+ * knows the child sent something visual earlier.
+ */
+private fun List<ChatMessage>.toChatHistory(maxTurns: Int): List<ChatTurn> {
+    val turns = mapNotNull { msg ->
+        if (msg.isLoading) return@mapNotNull null
+        val text = msg.text.trim()
+        if (text.isEmpty()) return@mapNotNull null
+        val role = when (msg.role) {
+            ChatMessage.Role.USER -> ChatTurn.Role.USER
+            ChatMessage.Role.LUNA -> ChatTurn.Role.ASSISTANT
+        }
+        ChatTurn(role = role, text = text)
+    }
+    return if (turns.size <= maxTurns) turns else turns.takeLast(maxTurns)
 }

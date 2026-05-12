@@ -12,9 +12,18 @@ import android.graphics.Bitmap
  */
 internal interface LlmBackend {
 
-    /** Single-turn completion for the child-facing chat. */
+    /**
+     * Multi-turn completion for the child-facing chat.
+     *
+     * `history` is the conversation so far (oldest first), NOT including
+     * the new `userText` being asked now. Backends that support chat
+     * (Google AI Studio, OpenRouter) wire it into their respective
+     * conversation APIs so follow-up questions like "tell me more" can
+     * resolve against earlier turns.
+     */
     suspend fun ask(
         systemPrompt: String,
+        history: List<ChatTurn>,
         userText: String,
         image: Bitmap?,
         modelName: String,
@@ -26,4 +35,17 @@ internal interface LlmBackend {
         rawHistoryText: String,
         modelName: String,
     ): String
+}
+
+/**
+ * A single completed turn in the chat, used as conversation history for
+ * the next call. Images from prior turns are deliberately omitted — only
+ * the most recent message's image is forwarded, so we don't re-upload
+ * large bitmaps on every follow-up.
+ */
+data class ChatTurn(
+    val role: Role,
+    val text: String,
+) {
+    enum class Role { USER, ASSISTANT }
 }
