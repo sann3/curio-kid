@@ -1,0 +1,22 @@
+app/src/main/java/com/curiokid/app/ai/LunaAI.kt
+  s_f8f76619edb779::t_2ac464f5f32204 305,309-330
+  s_f8f76619edb779::t_e4df7424a9e355 226-233
+app/src/main/java/com/curiokid/app/ai/SystemPrompt.kt
+  s_f8f76619edb779::t_3cdc7510fff0c7 46-48,52-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.8",
+  "base_commit_sha": "42aea14e2b91db0fcdba54408902814e81695512",
+  "prompts": {},
+  "sessions": {
+    "s_f8f76619edb779": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0a9521d4-935c-48a3-9f06-d333b3d31c5b",
+        "model": "claude-opus-4-7-thinking-xhigh"
+      },
+      "human_author": "Santhoshkumar. P <santhosh.mathsca@gmail.com>"
+    }
+  }
+}
