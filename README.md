@@ -17,6 +17,10 @@ summarises the day's questions and surfaces conversation starters.
 - **Ask Luna anything** — text, image upload, camera capture, or voice input
   (system speech-to-text, no audio leaves the device until it's been
   transcribed).
+- **Age-tuned answers** — pick the child's age (5–12) in Settings and Luna's
+  system prompt shifts vocabulary, sentence length, and analogies to match
+  (kindergarten-simple for 5–6, early-elementary for 7–9, a touch more depth
+  for 10–12).
 - **Child protection by design** — Luna's system prompt enforces kid-safe
   language, gently redirects unsafe topics, and the Gemini API is configured
   with strict safety thresholds across harassment, hate speech, sexually
@@ -56,7 +60,7 @@ app/
     │       ├── chat/                      # Kid-facing Q&A screen
     │       ├── history/                   # Past questions
     │       ├── parent/                    # PIN-gated dashboard + digest
-    │       ├── settings/                  # API key, model, PIN
+    │       ├── settings/                  # Provider, API key, model, kid's age, PIN
     │       └── theme/                     # Material 3 theme
     └── res/                               # strings, colors, adaptive icon, file_paths
 ```
@@ -97,7 +101,8 @@ Compose / Gemini / Room dependencies.
   ```
 - On first launch, tap the **gear icon → Gemini API key**, paste your key, hit
   **Save**.
-- Tap the **shield icon** to set up a 4-digit Parent PIN.
+- Still in Settings, pick your child's **age** (5–12) so Luna can tune her
+  answers, and set a 4-digit **Parent PIN** to gate the dashboard.
 - Hand the device to your kid and let them ask Luna anything.
 
 > The Gradle wrapper expects to fetch Gradle 8.14.5 on first build. If your
@@ -121,8 +126,10 @@ Apache-2.0 licensed for commercial use.
 
 ## How safety is enforced
 
-1. **System prompt (`SystemPrompt.LUNA`)** instructs Luna to:
-   - Use kid-friendly language and analogies (Lego, swings, fruit).
+1. **System prompt (`SystemPrompt.luna(age)`)** instructs Luna to:
+   - Use kid-friendly language and analogies (Lego, swings, fruit), with
+     vocabulary and sentence length scaled to the child's age (5–12) chosen
+     in Settings.
    - Redirect violence / adult / self-harm / illegal / scary topics to "a
      trusted adult."
    - Never share personal contact info, links, or identify real people in
@@ -160,7 +167,8 @@ Apache-2.0 licensed for commercial use.
   offline answers.
 - Direct audio uploads to Gemini (currently transcribed locally instead).
 - Reading mode where Luna's reply is read aloud with TTS.
-- Custom kid profiles (age, interests) to further tune the system prompt.
+- Multi-kid profiles (name + interests on top of the existing age setting) so
+  siblings can share a device without resetting Settings.
 - Whitelist / blacklist topics in the parent dashboard.
 
 ---

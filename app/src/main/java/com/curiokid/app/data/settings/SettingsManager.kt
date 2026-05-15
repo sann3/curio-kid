@@ -68,6 +68,11 @@ class SettingsManager(context: Context) {
     private val _debugMode = MutableStateFlow(prefs.getBoolean(KEY_DEBUG, false))
     val debugMode: StateFlow<Boolean> = _debugMode.asStateFlow()
 
+    private val _kidAge = MutableStateFlow(
+        clampAge(prefs.getInt(KEY_KID_AGE, DEFAULT_KID_AGE))
+    )
+    val kidAge: StateFlow<Int> = _kidAge.asStateFlow()
+
     /**
      * API key for whichever provider is active right now. Null means either
      * no key is configured yet, or the active provider doesn't need one
@@ -148,6 +153,12 @@ class SettingsManager(context: Context) {
         _debugMode.value = enabled
     }
 
+    fun setKidAge(age: Int) {
+        val clamped = clampAge(age)
+        prefs.edit().putInt(KEY_KID_AGE, clamped).apply()
+        _kidAge.value = clamped
+    }
+
     fun verifyPin(input: String): Boolean {
         val current = _parentPin.value ?: return false
         return current == input
@@ -170,6 +181,15 @@ class SettingsManager(context: Context) {
         private const val KEY_LOCAL_MODEL = "local_gemma_model"
         private const val KEY_PIN = "parent_pin"
         private const val KEY_DEBUG = "debug_mode"
+        private const val KEY_KID_AGE = "kid_age"
+
+        const val MIN_KID_AGE = 5
+        const val MAX_KID_AGE = 12
+        const val DEFAULT_KID_AGE = 8
+        val KID_AGE_OPTIONS: List<Int> = (MIN_KID_AGE..MAX_KID_AGE).toList()
+
+        private fun clampAge(value: Int): Int =
+            value.coerceIn(MIN_KID_AGE, MAX_KID_AGE)
 
         /**
          * Gemma 4 variants exposed through the Gemini API. As of April 2026

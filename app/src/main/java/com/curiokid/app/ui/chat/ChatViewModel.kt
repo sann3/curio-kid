@@ -116,14 +116,16 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
 
         viewModelScope.launch {
             val modelName = settings.activeModel.value
+            val kidAge = settings.kidAge.value
             DebugLog.i(
                 "ChatVM",
-                "ask via ${provider.displayName} model=$modelName image=${image != null} historyTurns=${history.size}"
+                "ask via ${provider.displayName} model=$modelName kidAge=$kidAge image=${image != null} historyTurns=${history.size}"
             )
             val ai = LunaAI(
                 provider = provider,
                 apiKey = key,
                 modelName = modelName,
+                kidAge = kidAge,
             )
             val result = ai.ask(text, image, history)
             val debug = settings.debugMode.value

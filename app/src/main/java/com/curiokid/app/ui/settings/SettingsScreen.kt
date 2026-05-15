@@ -83,6 +83,7 @@ fun SettingsScreen(
     val pin by viewModel.parentPin.collectAsState()
     val debugMode by viewModel.debugMode.collectAsState()
     val debugEntries by viewModel.debugEntries.collectAsState()
+    val kidAge by viewModel.kidAge.collectAsState()
 
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -153,6 +154,12 @@ fun SettingsScreen(
                         LlmProvider.LOCAL -> viewModel.setLocalModel(value)
                     }
                 },
+            )
+
+            KidAgeCard(
+                selected = kidAge,
+                options = viewModel.kidAgeOptions,
+                onSelect = viewModel::setKidAge,
             )
 
             PinCard(
@@ -325,6 +332,43 @@ private fun ModelCard(
                 )
             }
         }
+    }
+}
+
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun KidAgeCard(
+    selected: Int,
+    options: List<Int>,
+    onSelect: (Int) -> Unit,
+) {
+    SectionCard(
+        title = stringResource(R.string.settings_kid_age),
+        description = stringResource(R.string.settings_kid_age_description),
+    ) {
+        androidx.compose.foundation.layout.FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            options.forEach { age ->
+                val isSelected = age == selected
+                AssistChip(
+                    onClick = { onSelect(age) },
+                    label = { Text(age.toString()) },
+                    colors = if (isSelected) {
+                        AssistChipDefaults.assistChipColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            labelColor = Color.White,
+                        )
+                    } else AssistChipDefaults.assistChipColors(),
+                )
+            }
+        }
+        Text(
+            text = stringResource(R.string.settings_kid_age_value, selected),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+        )
     }
 }
 

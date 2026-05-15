@@ -19,6 +19,7 @@ class LunaAI(
     private val provider: LlmProvider,
     private val apiKey: String?,
     private val modelName: String,
+    private val kidAge: Int,
 ) {
 
     private val backend: LlmBackend = when (provider) {
@@ -33,7 +34,7 @@ class LunaAI(
         history: List<ChatTurn> = emptyList(),
     ): Result<String> = runCatching {
         val raw = backend.ask(
-            systemPrompt = SystemPrompt.LUNA,
+            systemPrompt = SystemPrompt.luna(kidAge),
             history = history,
             userText = question,
             image = image,

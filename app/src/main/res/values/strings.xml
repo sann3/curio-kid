@@ -28,6 +28,9 @@
     <string name="settings_save">Save</string>
     <string name="settings_clear">Clear</string>
     <string name="settings_pin">Parent PIN (4 digits)</string>
+    <string name="settings_kid_age">Kid\'s age</string>
+    <string name="settings_kid_age_description">Luna tailors how she explains things to your child\'s age — simpler words and analogies for younger kids, a bit more depth for older ones.</string>
+    <string name="settings_kid_age_value">%1$d years old</string>
     <string name="settings_model">Model</string>
     <string name="settings_provider">AI provider</string>
     <string name="settings_local_model_title">On-device Gemma 4</string>

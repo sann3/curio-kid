@@ -25,6 +25,9 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     val debugMode: StateFlow<Boolean> = settings.debugMode
     val debugEntries: StateFlow<List<DebugLog.Entry>> = DebugLog.entries
 
+    val kidAge: StateFlow<Int> = settings.kidAge
+    val kidAgeOptions: List<Int> = com.curiokid.app.data.settings.SettingsManager.KID_AGE_OPTIONS
+
     fun modelsFor(provider: LlmProvider): List<String> = settings.modelsFor(provider)
 
     fun setProvider(value: LlmProvider) = settings.setProvider(value)
@@ -42,6 +45,8 @@ class SettingsViewModel(application: Application) : AndroidViewModel(application
     fun setPin(value: String?) = settings.setParentPin(value)
 
     fun setDebugMode(enabled: Boolean) = settings.setDebugMode(enabled)
+
+    fun setKidAge(age: Int) = settings.setKidAge(age)
 
     fun clearDebugLog() = DebugLog.clear()
 }

@@ -103,6 +103,7 @@ class ParentViewModel(application: Application) : AndroidViewModel(application) 
                 provider = provider,
                 apiKey = key,
                 modelName = settings.activeModel.value,
+                kidAge = settings.kidAge.value,
             )
             val raw = formatHistoryForDigest(items)
             val result = ai.summariseForParent(raw)
