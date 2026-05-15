@@ -223,8 +223,14 @@ private fun cleanLunaReply(raw: String): String {
     // filter below.
     val finalAnchorLine = Regex(
         "(?im)^\\s*\\*{0,2}\\s*" +
-            "(?:final(?:\\s+(?:polish|answer|response|reply|draft|version))?" +
-            "|polished(?:\\s+(?:answer|reply|response))?" +
+            "(?:final(?:\\s+(?:polish|answer|response|reply|draft|version" +
+            "|selection|output|result|choice))?" +
+            "|polished(?:\\s+(?:answer|reply|response|version))?" +
+            "|revised(?:\\s+(?:draft|answer|reply|response|version))?" +
+            "|let'?s\\s+go\\s+with(?:\\s+this)?" +
+            "|going\\s+with(?:\\s+this)?" +
+            "|here'?s\\s+(?:the|my)\\s+(?:final\\s+)?(?:answer|reply|response)" +
+            "|my\\s+(?:final|polished|revised)\\s+(?:answer|reply|response|version)" +
             "|the\\s+answer|answer|response|reply)" +
             "\\s*\\*{0,2}\\s*:\\s*$",
     )
@@ -296,7 +302,30 @@ private fun cleanLunaReply(raw: String): String {
         .replace(Regex("\\n{3,}"), "\n\n")
         .trim()
 
-    return cleaned.ifBlank {
+    return dedupeDoubledTail(cleaned).ifBlank {
         "Hmm, let me think about that another way — could you ask me again?"
     }
+}
+
+/**
+ * Some models (notably Gemma) sometimes emit the same final answer back-to-back,
+ * with no separator between the two copies — e.g. "…cats make? 🐾…cats make? 🐾".
+ * If the cleaned string is essentially two identical halves stitched together,
+ * keep just one copy.
+ */
+private fun dedupeDoubledTail(text: String): String {
+    val trimmed = text.trim()
+    val n = trimmed.length
+    if (n < 40) return trimmed
+
+    // The split point isn't always exactly n/2 (one half may have trailing
+    // whitespace or a stray newline), so probe a small window around it.
+    val approxMid = n / 2
+    val window = (approxMid - 5).coerceAtLeast(1)..(approxMid + 5).coerceAtMost(n - 1)
+    for (mid in window) {
+        val first = trimmed.substring(0, mid).trim()
+        val second = trimmed.substring(mid).trim()
+        if (first.length >= 20 && first == second) return first
+    }
+    return trimmed
 }
