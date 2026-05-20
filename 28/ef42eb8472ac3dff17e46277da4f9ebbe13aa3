@@ -1,0 +1,12 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "28ef42eb8472ac3dff17e46277da4f9ebbe13aa3",
+  "prompts": {},
+  "humans": {
+    "h_d58e1f030ad1d4": {
+      "author": "Santhoshkumar. P <santhosh.mathsca@gmail.com>"
+    }
+  }
+}
