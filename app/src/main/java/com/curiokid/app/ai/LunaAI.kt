@@ -222,10 +222,13 @@ class LunaAI(
  *  1. If the model emitted a "Final Polish:" / "Final Answer:" / "Answer:"
  *     anchor on its own line, keep only what comes after the last anchor —
  *     everything before it is drafting/planning chatter.
- *  2. Drop prose-style chain-of-thought paragraphs that reference "the
- *     prompt", talk about drafting/polishing/self-correction, or use
- *     planning verbs like "I'll treat the question as…", "I will
- *     revise…", "Let me polish…".
+ *  2. Walk paragraphs in order. Drop leading meta paragraphs (CoT before
+ *     the answer), but once we've kept at least one answer paragraph,
+ *     truncate the moment a meta paragraph appears — Gemma loves to
+ *     append a post-hoc "Check sentence count: 1. … 2. …" / "Wait, I
+ *     should check if X needs definition" / "Let's try a 3-sentence
+ *     version just to be safe" block after a perfectly good answer, and
+ *     everything from that point on is reasoning, not answer.
  *  3. Drop bullet/label-style leaks — Gemma sometimes echoes the system
  *     prompt's structure as "* Intent: …" or "* Tone check: …".
  *  4. Strip the most common markdown emphasis so kids see plain prose.
@@ -234,11 +237,14 @@ private fun cleanLunaReply(raw: String): String {
     val metaKeywords = "(?:" +
         "user\\s*says|intent|target\\s*audience|persona|" +
         "direct\\s*answer|tone\\s*check|safety\\s*check|" +
+        "sentence\\s*count(?:\\s*check)?|word\\s*count|" +
+        "check\\s+sentence\\s*count|" +
         "greeting|content|length|format|output\\s*format|" +
         "system\\s*role|core\\s*rules?|notes?|plan|draft|drafting|" +
         "rules?\\s*to\\s*follow|step\\s*\\d+|" +
         "self[\\s-]*correction|polish(?:ing)?|reasoning|" +
         "thought\\s*process|chain[\\s-]*of[\\s-]*thought|thinking|" +
+        "verification|verify|" +
         "my\\s*(?:plan|thinking|reasoning|approach|draft)" +
         ")"
 
@@ -279,11 +285,42 @@ private fun cleanLunaReply(raw: String): String {
             "|\\bself[\\s-]*correction\\b" +
             "|\\bfinal\\s+polish\\b" +
             "|\\bdrafting\\s+(?:the|my|a|this)\\b" +
+            // Post-hoc verification / alternate-draft tics Gemma loves
+            // to emit AFTER an otherwise clean answer.
+            "|\\bsentence\\s+count\\b" +
+            "|\\bword\\s+count\\b" +
+            "|\\b(?:just\\s+)?to\\s+be\\s+safe\\b" +
+            "|\\bone\\s+more\\s+check\\b" +
+            "|\\bneeds?\\s+(?:a\\s+)?definition\\b" +
+            // Per-word "hard word" self-audit Gemma sometimes appends:
+            //   Wait, is "atmosphere" a "hard word"? Yes.
+            //   Definition is provided.
+            "|\\b(?:hard|tricky|difficult|big|tough|complex)\\s+word\\b" +
+            "|\\bdefinitions?\\s+(?:is|are|was|were)\\s+(?:already\\s+)?provided\\b" +
+            "|\\bdefinitions?\\s+(?:already\\s+)?provided\\b" +
+            "|\\bi'?ll\\s+stick\\s+(?:to|with)\\b" +
+            "|\\bsticking\\s+(?:to|with)\\s+(?:the|my|that|this)\\b" +
+            "|\\blet'?s\\s+try\\s+(?:a|the|another|one\\s+more)\\s+" +
+            "(?:\\w+(?:[-\\s]\\w+){0,3}\\s+)?" +
+            "(?:version|draft|attempt|wording|phrasing|sentence)\\b" +
+            // Narrow "Wait, …" self-correction starter. We don't match a
+            // bare "Wait, I" because phrases like "Wait, I love that!" are
+            // perfectly legitimate; only flag a few obviously-meta tails:
+            // an "I should/need to/…" pursuit, a reference to the prompt,
+            // a "let me revise/…", or a self-question that immediately
+            // quotes a word being audited (`Wait, is "atmosphere"…`).
+            "|^\\s*wait[,!.]\\s+" +
+            "(?:i\\s+(?:should|need\\s+to|have\\s+to|must|forgot|missed)" +
+            "|the\\s+(?:system\\s+)?prompt" +
+            "|let\\s+me\\s+(?:revise|rewrite|polish|recheck|reconsider|" +
+            "check|count|verify|try\\s+again)" +
+            "|(?:is|are|does|do|did|was|were|should)\\s+[\"'\u201C\u2018])\\b" +
             // Meta verbs only — "think" is intentionally excluded so that
             // benign phrases like "Let me think of a fun example!" don't
             // get scrubbed out of legitimate answers.
             "|\\b(?:let\\s+me|i'?ll|i\\s+will|i\\s+should)\\s+" +
             "(?:plan|draft|rewrite|revise|polish|reconsider|" +
+            "check|recheck|verify|count|" +
             "interpret|approach\\s+this|treat\\s+(?:the|this|that)\\s+" +
             "(?:question|prompt|request|sentence|paragraph))\\b" +
             "|\\bhere'?s\\s+my\\s+(?:draft|attempt|plan|response\\s+plan|reasoning)\\b" +
@@ -294,24 +331,40 @@ private fun cleanLunaReply(raw: String): String {
         bulletMeta.containsMatchIn(t) || labelMeta.containsMatchIn(t)
     }
 
+    val isMetaParagraph: (String) -> Boolean = { para ->
+        if (proseMeta.containsMatchIn(para)) {
+            true
+        } else {
+            val lines = para.lines().map { it.trim() }.filter { it.isNotEmpty() }
+            lines.isNotEmpty() && lines.all { isMetaLine(it) }
+        }
+    }
+
     // Step 1: if a "Final Polish:" / "Answer:" / etc. anchor exists on its
     // own line, throw away everything up to and including the LAST one.
     val afterAnchor = finalAnchorLine.findAll(raw).lastOrNull()?.let { match ->
         raw.substring(match.range.last + 1)
     } ?: raw
 
-    // Step 2: split into paragraphs (blank-line separated) and drop the ones
-    // that are clearly the model narrating its own process.
+    // Step 2: split into paragraphs (blank-line separated) and walk them
+    // in order. Skip leading meta paragraphs; once we've kept an answer
+    // paragraph, the first meta paragraph after it terminates the answer
+    // (everything from there on is post-hoc reasoning / alternative drafts).
     val paragraphs = afterAnchor.split(Regex("\\n\\s*\\n"))
         .map { it.trim() }
         .filter { it.isNotEmpty() }
 
-    val keptParagraphs = paragraphs.filter { para ->
-        if (proseMeta.containsMatchIn(para)) return@filter false
-        val lines = para.lines().map { it.trim() }.filter { it.isNotEmpty() }
-        // Paragraph made up entirely of bullet/label meta lines? Drop it.
-        if (lines.isNotEmpty() && lines.all { isMetaLine(it) }) return@filter false
-        true
+    val keptParagraphs = buildList {
+        var seenAnswer = false
+        for (para in paragraphs) {
+            if (isMetaParagraph(para)) {
+                if (seenAnswer) break
+                // Leading meta before any answer — drop it and keep looking.
+                continue
+            }
+            add(para)
+            seenAnswer = true
+        }
     }
 
     // Step 3: line-level scrub for leaks mixed into a kept paragraph (the
