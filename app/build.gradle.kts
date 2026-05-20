@@ -90,6 +90,9 @@ dependencies {
 
     implementation(libs.coil.compose)
 
+    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.mediapipe.tasks.vision)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

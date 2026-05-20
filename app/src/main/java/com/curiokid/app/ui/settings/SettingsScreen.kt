@@ -21,6 +21,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BugReport
 import androidx.compose.material.icons.rounded.Visibility
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
@@ -29,6 +30,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -37,6 +39,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -61,6 +64,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.curiokid.app.R
+import com.curiokid.app.ai.local.LocalGemmaCatalog
+import com.curiokid.app.ai.local.LocalModelManager
+import com.curiokid.app.ai.local.LocalModelState
 import com.curiokid.app.ai.provider.LlmProvider
 import com.curiokid.app.data.debug.DebugLog
 import kotlinx.coroutines.launch
@@ -84,6 +90,10 @@ fun SettingsScreen(
     val debugMode by viewModel.debugMode.collectAsState()
     val debugEntries by viewModel.debugEntries.collectAsState()
     val kidAge by viewModel.kidAge.collectAsState()
+    val selectedLocalVariant by viewModel.selectedLocalVariant.collectAsState()
+    val localState by viewModel.localModelState.collectAsState()
+    val meteredVariant by viewModel.meteredConfirmation.collectAsState()
+    val huggingFaceToken by viewModel.huggingFaceToken.collectAsState()
 
     val clipboardManager = LocalClipboardManager.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -136,7 +146,32 @@ fun SettingsScreen(
                     onClear = viewModel::clearOpenRouterApiKey,
                 )
 
-                LlmProvider.LOCAL -> LocalModelCard()
+                LlmProvider.LOCAL -> {
+                    LocalModelCard(
+                        variant = selectedLocalVariant,
+                        state = localState,
+                        onDownload = viewModel::downloadSelectedLocalModel,
+                        onCancel = viewModel::cancelSelectedLocalModelDownload,
+                        onDelete = viewModel::deleteSelectedLocalModel,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    ApiKeyCard(
+                        title = stringResource(R.string.settings_hf_token_title),
+                        description = stringResource(R.string.settings_hf_token_description),
+                        storedKey = huggingFaceToken,
+                        hint = stringResource(R.string.settings_hf_token_hint),
+                        onSave = viewModel::saveHuggingFaceToken,
+                        onClear = viewModel::clearHuggingFaceToken,
+                    )
+                }
+            }
+
+            meteredVariant?.let { variant ->
+                MeteredDownloadDialog(
+                    variant = variant,
+                    onConfirm = viewModel::confirmMeteredDownload,
+                    onDismiss = viewModel::dismissMeteredDownload,
+                )
             }
 
             ModelCard(
@@ -236,9 +271,11 @@ private fun ApiKeyCard(
     storedKey: String?,
     onSave: (String) -> Unit,
     onClear: () -> Unit,
+    hint: String? = null,
 ) {
     var draft by rememberSaveable(storedKey) { mutableStateOf(storedKey.orEmpty()) }
     var visible by rememberSaveable { mutableStateOf(false) }
+    val labelText = hint ?: stringResource(R.string.settings_api_key_hint)
 
     LaunchedEffect(storedKey) {
         draft = storedKey.orEmpty()
@@ -248,7 +285,7 @@ private fun ApiKeyCard(
         OutlinedTextField(
             value = draft,
             onValueChange = { draft = it.trim() },
-            label = { Text(stringResource(R.string.settings_api_key_hint)) },
+            label = { Text(labelText) },
             singleLine = true,
             visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
@@ -278,20 +315,134 @@ private fun ApiKeyCard(
 }
 
 @Composable
-private fun LocalModelCard() {
+private fun LocalModelCard(
+    variant: LocalGemmaCatalog.Variant,
+    state: LocalModelState,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit,
+) {
     SectionCard(
         title = stringResource(R.string.settings_local_model_title),
-        description = "Runs Gemma 4 fully on this device — private, no internet, no API key needed. " +
-            "Setup requires downloading a Gemma 4 .task model file (a few GB). " +
-            "On-device inference isn't wired up yet in this build; pick another provider for now.",
+        description = stringResource(R.string.settings_local_model_description),
     ) {
-        Text(
-            text = "Status: not yet installed.",
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = variant.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(
+                    R.string.settings_local_size_label,
+                    LocalModelManager.humanBytes(variant.sizeBytes),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+            )
+        }
+
+        when (state) {
+            LocalModelState.NotInstalled -> {
+                StatusLine(
+                    text = stringResource(R.string.settings_local_status_not_installed),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_local_action_download))
+                }
+            }
+
+            is LocalModelState.Downloading -> {
+                StatusLine(
+                    text = stringResource(R.string.settings_local_status_downloading),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                LinearProgressIndicator(
+                    progress = { state.percent / 100f },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = stringResource(
+                        R.string.settings_local_progress_label,
+                        LocalModelManager.humanBytes(state.bytesDownloaded),
+                        LocalModelManager.humanBytes(state.totalBytes),
+                        state.percent,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                )
+                OutlinedButton(onClick = onCancel) {
+                    Text(stringResource(R.string.settings_local_action_cancel))
+                }
+            }
+
+            is LocalModelState.Installed -> {
+                StatusLine(
+                    text = stringResource(R.string.settings_local_status_installed),
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                OutlinedButton(onClick = onDelete) {
+                    Text(stringResource(R.string.settings_local_action_delete))
+                }
+            }
+
+            is LocalModelState.Failed -> {
+                StatusLine(
+                    text = stringResource(R.string.settings_local_status_failed),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+                Text(
+                    text = stringResource(R.string.settings_local_failed_prefix, state.reason),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+                Button(onClick = onDownload, modifier = Modifier.fillMaxWidth()) {
+                    Text(stringResource(R.string.settings_local_action_retry))
+                }
+            }
+        }
     }
+}
+
+@Composable
+private fun StatusLine(text: String, tint: Color) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium,
+        color = tint,
+    )
+}
+
+@Composable
+private fun MeteredDownloadDialog(
+    variant: LocalGemmaCatalog.Variant,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.settings_local_metered_title)) },
+        text = {
+            Text(
+                stringResource(
+                    R.string.settings_local_metered_message,
+                    LocalModelManager.humanBytes(variant.sizeBytes),
+                ),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(stringResource(R.string.settings_local_metered_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.settings_local_metered_cancel))
+            }
+        },
+    )
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -308,7 +459,8 @@ private fun ModelCard(
         LlmProvider.OPEN_ROUTER -> "Pick the Gemma 4 model on OpenRouter. " +
             "OpenRouter routes the request to a Gemma 4 host — pricing and latency vary by upstream."
         LlmProvider.LOCAL -> "Pick the on-device Gemma 4 size. " +
-            "2B int4 fits on most phones; 7B int4 needs more RAM."
+            "2B vision (int4) fits on most phones; 7B vision (int4) is sharper but needs more RAM. " +
+            "Switching variants here also switches what the Download button installs above."
     }
     SectionCard(
         title = stringResource(R.string.settings_model),

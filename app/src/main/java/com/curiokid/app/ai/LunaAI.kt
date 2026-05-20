@@ -2,6 +2,8 @@ package com.curiokid.app.ai
 
 import android.graphics.Bitmap
 import android.util.Log
+import com.curiokid.app.ai.local.LocalGemmaEngine
+import com.curiokid.app.ai.local.LocalModelManager
 import com.curiokid.app.ai.provider.ChatTurn
 import com.curiokid.app.ai.provider.GoogleAiStudioBackend
 import com.curiokid.app.ai.provider.LlmBackend
@@ -14,18 +16,30 @@ import com.curiokid.app.data.debug.DebugLog
  * Luna's brain. Owns the persona/safety prompt, response cleaning, and
  * friendly error mapping; delegates the actual call to whichever provider
  * the user has chosen (Google AI Studio, OpenRouter, or on-device).
+ *
+ * `localEngine` and `localManager` are only consulted when [provider] is
+ * [LlmProvider.LOCAL]; for cloud providers they are deliberately ignored
+ * so callers don't have to construct them just to talk to Google.
  */
 class LunaAI(
     private val provider: LlmProvider,
     private val apiKey: String?,
     private val modelName: String,
     private val kidAge: Int,
+    private val localEngine: LocalGemmaEngine? = null,
+    private val localManager: LocalModelManager? = null,
 ) {
 
     private val backend: LlmBackend = when (provider) {
         LlmProvider.GOOGLE_AI_STUDIO -> GoogleAiStudioBackend(apiKey.orEmpty())
         LlmProvider.OPEN_ROUTER -> OpenRouterBackend(apiKey.orEmpty())
-        LlmProvider.LOCAL -> LocalGemmaBackend()
+        LlmProvider.LOCAL -> {
+            val engine = localEngine
+                ?: error("LocalGemmaEngine is required when provider is LOCAL")
+            val manager = localManager
+                ?: error("LocalModelManager is required when provider is LOCAL")
+            LocalGemmaBackend(engine, manager)
+        }
     }
 
     suspend fun ask(
@@ -105,6 +119,28 @@ class LunaAI(
                 throwable is UnsupportedOperationException &&
                     !throwable.message.isNullOrBlank() ->
                     throwable.message!!
+
+                // On-device specific failures. MediaPipe surfaces native
+                // load problems as IllegalStateException / RuntimeException
+                // with characteristic substrings, and OOM as the standard
+                // OutOfMemoryError; we map all of them into one short,
+                // kid-readable sentence per failure mode.
+                throwable is OutOfMemoryError ||
+                    msg.contains("out of memory") ||
+                    msg.contains("oom") ||
+                    msg.contains("could not allocate") ||
+                    msg.contains("failed to allocate") ->
+                    "This phone doesn't have enough memory to run Gemma 4 on-device right now. " +
+                        "Try the smaller variant in Settings, or switch to Google AI Studio."
+
+                msg.contains("model file") ||
+                    msg.contains("modelpath") ||
+                    msg.contains("failed to load model") ||
+                    msg.contains("failed to initialize") ||
+                    msg.contains("llminference") ||
+                    msg.contains("mediapipe") ->
+                    "Luna's offline brain didn't start up. Open Settings → On-device " +
+                        "Gemma 4 to re-download the model, or switch to Google AI Studio."
 
                 msg.contains("not found") ||
                     msg.contains("is not supported") ||

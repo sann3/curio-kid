@@ -161,10 +161,63 @@ Apache-2.0 licensed for commercial use.
 
 ---
 
+## On-device Gemma 4 (offline)
+
+Curio Kid can run Gemma 4 fully on the phone via the **MediaPipe LLM
+Inference API**. No API key, no network, the only data leaving the device
+is whatever the parent dashboard later asks Luna to summarise.
+
+### Variants
+
+Only multimodal Gemma 4 builds are listed in the on-device picker — the
+camera/image flows assume Luna can see pictures regardless of which
+provider is selected.
+
+| Variant id                       | Size on disk | Notes                                  |
+| -------------------------------- | ------------ | -------------------------------------- |
+| `gemma-4-2b-it-int4-vision`      | ~1.6 GB      | Default. Fits on most modern phones.   |
+| `gemma-4-7b-it-int4-vision`      | ~4.8 GB      | Sharper answers, needs ~6 GB free RAM. |
+
+### How a parent installs it
+
+1. In Settings, tap **AI provider → On-device (local)**.
+2. Pick a variant in **Model**.
+3. Tap **Download model** in the **On-device Gemma 4** card.
+   - On a metered (cellular / hotspot) network you'll be asked to
+     confirm before the download starts.
+   - The download is resumable: if the app is killed mid-flight, tapping
+     Download again continues from where it stopped.
+4. Wait for the progress bar to reach 100 % and the status to switch to
+   **Installed ✓**.
+5. Hand the phone to your kid as usual.
+
+The `.task` file lives in the app's private internal storage
+(`<filesDir>/models/`), encrypted at rest by the OS, excluded from cloud
+backup, and removed automatically when the app is uninstalled. Tap
+**Delete** to free the space at any time.
+
+### Notes for developers
+
+- Override the URL for a variant during local development by editing
+  `LocalGemmaCatalog.kt` — the rest of the pipeline (download manager,
+  inference engine, backend, UI) is unchanged.
+- Skip the in-app downloader entirely by `adb push`-ing your own
+  `.task` file:
+  ```bash
+  adb push my-gemma-4.task /data/local/tmp/
+  adb shell run-as com.curiokid.app cp /data/local/tmp/my-gemma-4.task \
+      files/models/gemma-4-2b-it-int4-vision.task
+  ```
+  Restart the app and the on-device card will flip to **Installed ✓**.
+- The MediaPipe `LlmInference` instance is held as a process-wide
+  singleton in `CurioKidApplication.localGemmaEngine` and is dropped on
+  `onTrimMemory(MODERATE+)` so the OS can reclaim its multi-GB RAM
+  footprint when Curio Kid is backgrounded.
+
+---
+
 ## Future enhancements
 
-- On-device **Gemma** inference via MediaPipe LLM Inference API for fully
-  offline answers.
 - Direct audio uploads to Gemini (currently transcribed locally instead).
 - Reading mode where Luna's reply is read aloud with TTS.
 - Multi-kid profiles (name + interests on top of the existing age setting) so

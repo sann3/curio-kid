@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.curiokid.app.ai.local.LocalGemmaCatalog
 import com.curiokid.app.ai.provider.LlmProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -46,6 +47,14 @@ class SettingsManager(context: Context) {
 
     private val _openRouterApiKey = MutableStateFlow(prefs.getString(KEY_OPENROUTER_API, null))
     val openRouterApiKey: StateFlow<String?> = _openRouterApiKey.asStateFlow()
+
+    /**
+     * Personal HuggingFace access token (starts with `hf_…`). Sent as the
+     * `Authorization: Bearer` header by [LocalModelManager] when downloading
+     * gated Gemma `.task` files. Optional — ungated mirrors don't need it.
+     */
+    private val _huggingFaceToken = MutableStateFlow(prefs.getString(KEY_HF_TOKEN, null))
+    val huggingFaceToken: StateFlow<String?> = _huggingFaceToken.asStateFlow()
 
     private val _googleModel = MutableStateFlow(
         normalizeModel(prefs.getString(KEY_GOOGLE_MODEL, null), GOOGLE_MODELS)
@@ -122,6 +131,15 @@ class SettingsManager(context: Context) {
         _openRouterApiKey.value = cleaned
     }
 
+    fun setHuggingFaceToken(value: String?) {
+        val cleaned = value?.trim()?.ifBlank { null }
+        prefs.edit().apply {
+            if (cleaned == null) remove(KEY_HF_TOKEN) else putString(KEY_HF_TOKEN, cleaned)
+            apply()
+        }
+        _huggingFaceToken.value = cleaned
+    }
+
     fun setGoogleModel(value: String) {
         val normalized = normalizeModel(value, GOOGLE_MODELS)
         prefs.edit().putString(KEY_GOOGLE_MODEL, normalized).apply()
@@ -176,6 +194,7 @@ class SettingsManager(context: Context) {
         private const val KEY_PROVIDER = "llm_provider"
         private const val KEY_GOOGLE_API = "gemini_api_key"
         private const val KEY_OPENROUTER_API = "openrouter_api_key"
+        private const val KEY_HF_TOKEN = "huggingface_token"
         private const val KEY_GOOGLE_MODEL = "google_gemma_model"
         private const val KEY_OPENROUTER_MODEL = "openrouter_gemma_model"
         private const val KEY_LOCAL_MODEL = "local_gemma_model"
@@ -212,14 +231,12 @@ class SettingsManager(context: Context) {
         )
 
         /**
-         * Gemma 4 sizes that can realistically run fully on-device once a
-         * compatible `.task` file is downloaded. Quantised int4 builds are
-         * what MediaPipe Tasks GenAI ships.
+         * Gemma 4 sizes that can realistically run fully on-device through
+         * MediaPipe LLM Inference. Sourced from [LocalGemmaCatalog] so the
+         * downloader, engine, and Settings picker can never disagree on
+         * which variant ids exist.
          */
-        val LOCAL_MODELS = listOf(
-            "gemma-4-2b-it-int4",
-            "gemma-4-7b-it-int4",
-        )
+        val LOCAL_MODELS: List<String> = LocalGemmaCatalog.ALL.map { it.id }
 
         const val DEFAULT_MODEL = "gemma-4-26b-a4b-it"
 

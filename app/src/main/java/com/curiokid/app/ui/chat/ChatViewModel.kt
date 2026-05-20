@@ -126,6 +126,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 apiKey = key,
                 modelName = modelName,
                 kidAge = kidAge,
+                localEngine = app.localGemmaEngine,
+                localManager = app.localModelManager,
             )
             val result = ai.ask(text, image, history)
             val debug = settings.debugMode.value

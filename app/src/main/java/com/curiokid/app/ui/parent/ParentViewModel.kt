@@ -104,6 +104,8 @@ class ParentViewModel(application: Application) : AndroidViewModel(application) 
                 apiKey = key,
                 modelName = settings.activeModel.value,
                 kidAge = settings.kidAge.value,
+                localEngine = app.localGemmaEngine,
+                localManager = app.localModelManager,
             )
             val raw = formatHistoryForDigest(items)
             val result = ai.summariseForParent(raw)
