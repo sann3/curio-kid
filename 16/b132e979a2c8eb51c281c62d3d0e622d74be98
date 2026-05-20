@@ -1,0 +1,29 @@
+app/src/main/java/com/curiokid/app/ai/SystemPrompt.kt
+  s_ca04ba505e25be::t_2f92f3b3a044dc 53-58,62-68
+  s_ca04ba505e25be::t_4f4165ff7b6780 49-52,59,69-78
+app/src/main/java/com/curiokid/app/ai/LunaAI.kt
+  s_ca04ba505e25be::t_0a3416afb32455 295-300,308-311,316-317
+  s_ca04ba505e25be::t_a6462d75b07cd7 306-307,312-315
+  s_ca04ba505e25be::t_550701d8e07aec 225-231,240-241,247,288-294,301-305,323,334-342,349-352,357-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "16b132e979a2c8eb51c281c62d3d0e622d74be98",
+  "prompts": {},
+  "humans": {
+    "h_d58e1f030ad1d4": {
+      "author": "Santhoshkumar. P <santhosh.mathsca@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_ca04ba505e25be": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "23b6e8a1-12be-4bf8-858b-e45b4aa97ab7",
+        "model": "claude-opus-4-7-thinking-xhigh"
+      },
+      "human_author": "Santhoshkumar. P <santhosh.mathsca@gmail.com>"
+    }
+  }
+}
